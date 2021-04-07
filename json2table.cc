@@ -10,6 +10,8 @@ using std::string;
 using std::vector;
 using namespace std::literals;
 
+inline bool program_mode = false;
+
 template <typename T, typename Allocator>
 inline void set_or_extend(std::vector<T, Allocator> &vthis, size_t index, T &&data) {
     if(vthis.size() <= index) vthis.resize(index+1);
@@ -17,14 +19,14 @@ inline void set_or_extend(std::vector<T, Allocator> &vthis, size_t index, T &&da
 }
 
 inline string json_to_string(json j) {
-    if(j.is_array()) return "ARRAY";
-    if(j.is_object()) return "OBJECT";
+    if(j.is_array()) return program_mode ? j.dump() : "ARRAY";
+    if(j.is_object()) return program_mode ? j.dump() : "OBJECT";
     if(j.is_string()) return j.get<string>();
     if(j.is_number_float()) return std::to_string(j.get<double>());
     if(j.is_number()) return std::to_string(j.get<long>());
     if(j.is_boolean()) return std::to_string(j.get<bool>());
     if(j.is_null()) return "null";
-    return "UNKNOWN";
+    return program_mode ? j.dump() : "UNKNOWN";
 }
 
 void naive_json_access_path(json &input, rlib::string json_path) {
@@ -55,11 +57,13 @@ void naive_json_access_path(json &input, rlib::string json_path) {
 int main(int argc, char **argv) {
     rlib::opt_parser args(argc, argv);
     if(args.getBoolArg("-h", "--help")) {
-        rlib::println("json2table version 1.0.1, maintainer Recolic Keghart <root@recolic.net>");
+        rlib::println("json2table version 1.0.2, maintainer Recolic Keghart <root@recolic.net>");
         rlib::println("Usage: cat xxx.json | json2table");
         rlib::println("Usage: curl https://myapi/getJson | json2table /path/to/subobject");
+        rlib::println("Set --programming to make the output easier for program to process. ");
         return 1;
     }
+    program_mode = args.getBoolArg("-p", "--programming");
 
     auto json_path = args.getSubCommand("").replace("\\", "/").strip("/ \t");
     json input;
@@ -111,16 +115,24 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    // Print the table.
-    fort::char_table table;
-    table << fort::header;
-    for(auto &ele : headers) table << ele;
-    table << fort::endr;
-    for(auto &row : rows) {
-        for(auto &ele : row) table << ele;
-        table << fort::endr;
+    if(program_mode) {
+        rlib::println(rlib::printable_iter(headers, "|"));
+        for(auto &row : rows) {
+            rlib::println(rlib::printable_iter(row, "|"));
+        }
     }
+    else {
+        // Print the table.
+        fort::char_table table;
+        table << fort::header;
+        for(auto &ele : headers) table << ele;
+        table << fort::endr;
+        for(auto &row : rows) {
+            for(auto &ele : row) table << ele;
+            table << fort::endr;
+        }
 
-    rlib::println(table.to_string());
+        rlib::println(table.to_string());
+    }
 
 }
