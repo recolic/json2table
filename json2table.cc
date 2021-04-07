@@ -27,6 +27,31 @@ inline string json_to_string(json j) {
     return "UNKNOWN";
 }
 
+void naive_json_access_path(json &input, rlib::string json_path) {
+    for(auto &next : json_path.split('/')) {
+        if(!next.empty()) {
+            if(input.is_object()) {
+                // Simplest case.
+                input = input[next];
+            }
+            else if(input.is_array()) {
+                // Do this for every element.
+                json result_json_arr = json::array();
+                for(auto &[_, item] : input.items()) {
+                    if(item.is_object())
+                        result_json_arr.push_back(item[next]);
+                    else
+                        throw std::invalid_argument("json_path is not valid for json. No element `" + next + "` found in json input. (note that I support only one-level array iterate)");
+                }
+                input = std::move(result_json_arr);
+            }
+            else {
+                throw std::invalid_argument("json_path is not valid for json. No element `" + next + "` found in json input. ");
+            }
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     rlib::opt_parser args(argc, argv);
     if(args.getBoolArg("-h", "--help")) {
@@ -35,13 +60,10 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    auto json_path = args.getSubCommand("").replace("\\", "/").strip("/");
+    auto json_path = args.getSubCommand("").replace("\\", "/").strip("/ \t");
     json input;
     std::cin >> input;
-    for(auto &next : json_path.split('/')) {
-        if(!next.empty())
-            input = input[next];
-    }
+    naive_json_access_path(input, json_path);
 
     //////////////////////////////////////////////////////////////////////
 
