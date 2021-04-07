@@ -55,6 +55,7 @@ void naive_json_access_path(json &input, rlib::string json_path) {
 int main(int argc, char **argv) {
     rlib::opt_parser args(argc, argv);
     if(args.getBoolArg("-h", "--help")) {
+        rlib::println("json2table version 1.0.1, maintainer Recolic Keghart <root@recolic.net>");
         rlib::println("Usage: cat xxx.json | json2table");
         rlib::println("Usage: curl https://myapi/getJson | json2table /path/to/subobject");
         return 1;
