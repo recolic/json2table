@@ -29,9 +29,14 @@ inline string json_to_string(json j) {
     return program_mode ? j.dump() : "UNKNOWN";
 }
 
+void json_decay_single_element_array(json &input) {
+    while(input.is_array() && input.size() == 1)
+        input = input[0];
+}
 void naive_json_access_path(json &input, rlib::string json_path) {
     for(auto &next : json_path.split('/')) {
         if(!next.empty()) {
+            json_decay_single_element_array(input);
             if(input.is_object()) {
                 // Simplest case.
                 input = input[next];
@@ -40,6 +45,7 @@ void naive_json_access_path(json &input, rlib::string json_path) {
                 // Do this for every element.
                 json result_json_arr = json::array();
                 for(auto &[_, item] : input.items()) {
+                    json_decay_single_element_array(item);
                     if(item.is_object())
                         result_json_arr.push_back(item[next]);
                     else
@@ -57,7 +63,7 @@ void naive_json_access_path(json &input, rlib::string json_path) {
 int main(int argc, char **argv) {
     rlib::opt_parser args(argc, argv);
     if(args.getBoolArg("-h", "--help")) {
-        rlib::println("json2table version 1.0.2, maintainer Recolic Keghart <root@recolic.net>");
+        rlib::println("json2table version 1.0.3, maintainer Recolic Keghart <root@recolic.net>");
         rlib::println("Usage: cat xxx.json | json2table");
         rlib::println("Usage: curl https://myapi/getJson | json2table /path/to/subobject");
         rlib::println("Set --programming to make the output easier for program to process. ");
@@ -75,8 +81,10 @@ int main(int argc, char **argv) {
     vector<string> headers;
     vector<vector<string>> rows(1);
     size_t curr_row_pos = 0;
+    json_decay_single_element_array(input);
     if(input.is_array()) {
         for(auto &[_, item] : input.items()) {
+            json_decay_single_element_array(item);
             if(item.is_object()) {
                 // Perfect schema: [{}, {}, ...]
                 for(auto &[key, value] : item.items()) {
