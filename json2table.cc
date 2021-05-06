@@ -97,6 +97,7 @@ int main(int argc, char **argv) {
                 }
             }
             else if(item.is_array()) {
+                // It's an array of array. Print the matrix out!
                 for(auto &[_, value] : item.items()) {
                     rows[curr_row_pos].push_back(json_to_string(value));
                 }
