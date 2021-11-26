@@ -1,4 +1,5 @@
 
+# Compile for windows: make CXX='x86_64-w64-mingw32-g++ -Ilib -static'
 CXX ?= g++
 
 build:
