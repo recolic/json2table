@@ -33,29 +33,42 @@ void json_decay_single_element_array(json &input) {
     while(input.is_array() && input.size() == 1)
         input = input[0];
 }
+void _json_get_subset(json &input, rlib::string subset_key) {
+    // This function steps one-level deeper in the path
+    json_decay_single_element_array(input);
+    if(input.is_object()) {
+        // Supports multiple col selection
+        auto subset_keys = subset_key.split(',');
+        if(subset_keys.size() == 1)
+            // Simplest case. we must decay to the next level, if there's only one subset key. 
+            input = input[subset_keys[0]];
+        else {
+            // Multiple subset keys. The result is a table in the same level, EVEN IF only one of them exists in result. 
+            json result = {}; // Not-null even if none of keys exists. 
+            for(auto &&k : subset_keys) {
+                if(!k.empty()) result[k] = input[k];
+            }
+            input = std::move(result);
+        }
+    }
+    else if(input.is_array()) {
+        // Do element-wise-operation for every element.
+        json result_json_arr = json::array();
+        for(auto &[_, item] : input.items()) {
+            json_decay_single_element_array(item);
+            _json_get_subset(item, subset_key);
+            result_json_arr.emplace_back(std::move(item));
+        }
+        input = std::move(result_json_arr);
+    }
+    else {
+        throw std::invalid_argument("json_path is not valid for json. No element `" + subset_key + "` found in json input. (the result of previous level is neither object nor array)");
+    }
+}
 void naive_json_access_path(json &input, rlib::string json_path) {
     for(auto &next : json_path.split('/')) {
         if(!next.empty()) {
-            json_decay_single_element_array(input);
-            if(input.is_object()) {
-                // Simplest case.
-                input = input[next];
-            }
-            else if(input.is_array()) {
-                // Do this for every element.
-                json result_json_arr = json::array();
-                for(auto &[_, item] : input.items()) {
-                    json_decay_single_element_array(item);
-                    if(item.is_object())
-                        result_json_arr.push_back(item[next]);
-                    else
-                        throw std::invalid_argument("json_path is not valid for json. No element `" + next + "` found in json input. (note that I support only one-level array iterate)");
-                }
-                input = std::move(result_json_arr);
-            }
-            else {
-                throw std::invalid_argument("json_path is not valid for json. No element `" + next + "` found in json input. ");
-            }
+            _json_get_subset(input, next);
         }
     }
 }
@@ -63,10 +76,12 @@ void naive_json_access_path(json &input, rlib::string json_path) {
 int main(int argc, char **argv) {
     rlib::opt_parser args(argc, argv);
     if(args.getBoolArg("-h", "--help")) {
-        rlib::println("json2table version 1.0.3, maintainer Recolic Keghart <root@recolic.net>");
+        rlib::println("json2table version 1.0.4, maintainer Recolic Keghart <root@recolic.net>");
         rlib::println("Usage: cat xxx.json | json2table");
         rlib::println("Usage: curl https://myapi/getJson | json2table /path/to/subobject");
-        rlib::println("Set --programming to make the output easier for program to process. ");
+        rlib::println("Set --programming / -p to make the output easier for program to process. ");
+        rlib::println("You can use /path/to/col1,col2,col8 to select multiple columns. ");
+        rlib::println("This tool has a stable CLI interface between different version, unless explicitly warned.  ");
         return 1;
     }
     program_mode = args.getBoolArg("-p", "--programming");
@@ -83,6 +98,7 @@ int main(int argc, char **argv) {
     size_t curr_row_pos = 0;
     json_decay_single_element_array(input);
     if(input.is_array()) {
+        // multi-row complete table
         for(auto &[_, item] : input.items()) {
             json_decay_single_element_array(item);
             if(item.is_object()) {
@@ -111,7 +127,7 @@ int main(int argc, char **argv) {
         }
     }
     else if(input.is_object()) {
-        // single-row
+        // single-row table
         for(auto &[key, value] : input.items()) {
             // Add key-value into table.
             headers.emplace_back(key);
@@ -119,10 +135,12 @@ int main(int argc, char **argv) {
         }
     }
     else {
-        // gg. Just print and go.
+        // No way to create table. Just print and go.
         rlib::println("Single value:", json_to_string(input));
         return 0;
     }
+
+    ////////////////////// Print-out the table
 
     if(program_mode) {
         rlib::println(rlib::printable_iter(headers, "|"));
