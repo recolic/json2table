@@ -76,12 +76,11 @@ void naive_json_access_path(json &input, rlib::string json_path) {
 int main(int argc, char **argv) {
     rlib::opt_parser args(argc, argv);
     if(args.getBoolArg("-h", "--help")) {
-        rlib::println("json2table version 1.0.4, maintainer Recolic Keghart <root@recolic.net>");
+        rlib::println("json2table version 1.0.5, maintainer Recolic Keghart <root@recolic.net>");
         rlib::println("Usage: cat xxx.json | json2table");
         rlib::println("Usage: curl https://myapi/getJson | json2table /path/to/subobject");
         rlib::println("Set --programming / -p to make the output easier for program to process. ");
         rlib::println("You can use /path/to/col1,col2,col8 to select multiple columns. ");
-        rlib::println("This tool has a stable CLI interface between different version, unless explicitly warned.  ");
         return 1;
     }
     program_mode = args.getBoolArg("-p", "--programming");
@@ -93,7 +92,7 @@ int main(int argc, char **argv) {
 
     //////////////////////////////////////////////////////////////////////
 
-    vector<string> headers;
+    vector<string> headers; // it can be empty
     vector<vector<string>> rows(1);
     size_t curr_row_pos = 0;
     json_decay_single_element_array(input);
@@ -135,9 +134,8 @@ int main(int argc, char **argv) {
         }
     }
     else {
-        // No way to create table. Just print and go.
-        rlib::println("Single value:", json_to_string(input));
-        return 0;
+        // No way to create table. It's a single value, just put it in a 1x1 table. 
+        rows[curr_row_pos].emplace_back("VAL: "s + json_to_string(input));
     }
 
     ////////////////////// Print-out the table
@@ -153,7 +151,7 @@ int main(int argc, char **argv) {
         fort::char_table table;
         table << fort::header;
         for(auto &ele : headers) table << ele;
-        table << fort::endr;
+        if(!headers.empty()) table << fort::endr;
         for(auto &row : rows) {
             for(auto &ele : row) table << ele;
             table << fort::endr;
