@@ -5,6 +5,21 @@
 #include <algorithm>
 #include <string>
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#ifdef __BORLANDC__
+#define _setmode setmode
+#endif
+inline void fix_fucking_windows_crlf_bug() {
+    _setmode(_fileno(stdout), _O_BINARY);
+}
+#else
+#define fix_fucking_windows_crlf_bug()
+#endif
+
+
+
 using nlohmann::json;
 using std::string;
 using std::vector;
@@ -74,9 +89,10 @@ void naive_json_access_path(json &input, rlib::string json_path) {
 }
 
 int main(int argc, char **argv) {
+    fix_fucking_windows_crlf_bug();
     rlib::opt_parser args(argc, argv);
     if(args.getBoolArg("-h", "--help")) {
-        rlib::println("json2table version 1.0.6-2, maintainer Recolic Keghart <root@recolic.net>");
+        rlib::println("json2table version 1.0.6-3, maintainer Recolic Keghart <root@recolic.net>");
         rlib::println("Usage: cat xxx.json | json2table");
         rlib::println("Usage: curl https://myapi/getJson | json2table /path/to/subobject");
         rlib::println("Set --programming / -p to make the output easier for program to process. ");
