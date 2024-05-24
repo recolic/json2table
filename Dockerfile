@@ -1,4 +1,4 @@
-# sudo docker build .
+# Quick build static binary: sudo docker build .
 from ubuntu:18.04
 
 run DEBIAN_FRONTEND=noninteractive apt update && DEBIAN_FRONTEND=noninteractive apt install -y g++ make curl
